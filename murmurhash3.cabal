@@ -8,7 +8,7 @@ license-file:        LICENSE
 author:              Nis N. Wegmann
 maintainer:          niswegmann@gmail.com
 homepage:            https://github.com/niswegmann/murmur3
-extra-source-files:  README.md
+extra-source-files:  README.mdgit remote add origin
 build-type:          Simple
 cabal-version:       >= 1.10
 description:         

@@ -10,7 +10,7 @@ Install
 -------
 
 Assuming you have installed the
-(Haskell platform)[http://hackage.haskell.org/platform/], use cabal:
+[Haskell platform](http://hackage.haskell.org/platform/), use cabal:
 
     $ cabal install murmurhash3
 
