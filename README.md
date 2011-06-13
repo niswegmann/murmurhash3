@@ -1,9 +1,6 @@
 MurmurHash3
 ===========
 
-Synopsis
---------
-
 32-bit non-cryptographic hashing using MurmurHash3.
 
 Install
