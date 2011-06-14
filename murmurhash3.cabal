@@ -19,6 +19,6 @@ description:
 
 library
   default-language:  Haskell2010
-  build-depends:     bytestring, haskell2010
+  build-depends:     haskell2010
   ghc-options:       -O2 -Wall -fwarn-tabs
   exposed-modules:   Data.Digest.Murmur

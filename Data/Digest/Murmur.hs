@@ -29,6 +29,7 @@ module Data.Digest.Murmur
 import Data.Array
 import Data.Bits
 import Data.Char
+import Data.Complex
 import Data.Int
 import Data.Ratio
 import Data.Word
@@ -274,3 +275,12 @@ instance (Hashable a, Hashable b, Hashable c, Hashable d)
 
 instance (Hashable a, Integral a) => Hashable (Ratio a) where
   hashGen x = hashGen (numerator x) `combine` hashGen (denominator x)
+
+instance Hashable Float where
+  hashGen = hashGen . toRational
+
+instance Hashable Double where
+  hashGen = hashGen . toRational
+
+instance (Hashable a, RealFloat a) => Hashable (Complex a) where
+  hashGen x = hashGen (realPart x) `combine` hashGen (imagPart x)
