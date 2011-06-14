@@ -90,8 +90,8 @@ finalize h0 =
 
 -- Hash generators.
 
--- | A hash generator is function from hash states to hash states. The internal
--- representation of a hash state is kept transparent.
+-- | A hash generator is a function from hash states to hash states. The
+-- internal representation of hash states is kept transparent.
 newtype HashGen = HashGen (Word32 -> Word32)
 
 -- | Runs a hash generator on a seed.
@@ -99,7 +99,7 @@ runHashGen :: HashGen -> Word32 -> Hash
 runHashGen (HashGen f) = finalize . f
 
 -- | Returns a hash generator which mixes its input with a 32-bit word.
--- Useful for enumerating constructors when deriving 'Hashable'.
+-- Is used for enumerating constructors when deriving 'Hashable'.
 {-# INLINE salt #-}
 salt :: Word32 -> HashGen
 salt = HashGen . mix
