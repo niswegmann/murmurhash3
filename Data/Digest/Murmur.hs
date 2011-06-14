@@ -14,12 +14,6 @@ webpages:
   * <http://code.google.com/p/smhasher/>
 
   * <http://en.wikipedia.org/wiki/MurmurHash>
-
-If you need to generate hashes from large pieces of data such as bytestreams
-or if you need a cryptographic hash function this is the wrong package. If
-you need to generate rapid hashes from small pieces of data, e.g. for
-implementing hash-based lookup, this is the right package.
-
 -}
 
 module Data.Digest.Murmur
@@ -45,12 +39,21 @@ import Data.Word
 
 -- MurmurHash3 uses a mixer and a finalizer. The mixer maps a block (the data we
 -- want to hash) and a hash state into a new hash state, where both blocks and
--- hash states are represented by 32-bit words. A finalizer finalizes a hash
--- state by forcing all bits to avalanche.
+-- hash states are represented by 32-bit words. The finalizer forces all bits
+-- in the hash state to avalanche.
 
 {-# INLINE mix #-}
 mix :: Word32 -> Word32 -> Word32
-mix k h = (((k * c1) `rotateL` r1) * c2) `xor` (((h `rotateL` r2) * m1) + m2)
+mix b0 h0 =
+  let
+    b1 = b0 * c1
+    b2 = b1 `rotateL` r1
+    b3 = b2 * c2
+    h1 = h0 `xor` b3
+    h2 = h1 `rotateL` r2
+    h3 = h2 * m1 + m2
+  in
+    h3
 
   where
 
@@ -65,7 +68,15 @@ mix k h = (((k * c1) `rotateL` r1) * c2) `xor` (((h `rotateL` r2) * m1) + m2)
 
 {-# INLINE finalize #-}
 finalize :: Word32 -> Word32
-finalize = (`shiftR` r3) . (* c2) . (`shiftR` r2) . (* c1) . (`shiftR` r1)
+finalize h0 =
+  let
+    h1 = h0 `xor` (h0 `shiftR` r1)
+    h2 = h1 * c1
+    h3 = h2 `xor` (h2 `shiftR` r2)
+    h4 = h3 * c2
+    h5 = h4 `xor` (h4 `shiftR` r3)
+  in
+    h5
 
   where
 
@@ -104,8 +115,6 @@ combine (HashGen f) (HashGen g) = HashGen (g . f)
 
 --------------------------------------------------------------------------------
 
--- Hash type-class and hash function.
-
 -- | Making custom data types instantiate 'Hashable' is straightforward; suppose
 -- we have the following tree data structure:
 --
@@ -134,6 +143,7 @@ combine (HashGen f) (HashGen g) = HashGen (g . f)
 -- >   hashGen (Right y) = salt 0x2 `combine` hashGen y
 --
 class Hashable a where
+  -- | Returns a hash generator for the argument.
   hashGen :: a -> HashGen
 
 -- | A 32-bit hash value.
@@ -170,7 +180,7 @@ hashWord64 :: Word64 -> HashGen
 hashWord64 x = hashWord32 lo `combine` hashWord32 hi
   where
     lo = fromIntegral x
-    hi = fromIntegral (rotateR x 16)
+    hi = fromIntegral (x `shiftR` 32)
 
 {-# INLINE hashInt #-}
 hashInt :: Int -> HashGen
@@ -178,6 +188,17 @@ hashInt =
   if bitSize (undefined :: Int)  <= 32
     then hashWord32 . fromIntegral
     else hashWord64 . fromIntegral
+
+{-# INLINE hashInteger #-}
+hashInteger :: Integer -> HashGen
+hashInteger k
+  | k < 0     = foldr combine (salt 0x1) . blocks $ abs k
+  | otherwise = foldr combine (salt 0x0) . blocks $ k
+
+  where
+
+    blocks 0 = []
+    blocks x = hashWord32 (fromInteger x) : blocks (x `shiftR` 32)
 
 --------------------------------------------------------------------------------
 
@@ -216,55 +237,40 @@ instance Hashable Int32 where
 instance Hashable Int64 where
   hashGen = hashWord64 . fromIntegral
 
--- instance Hashable Integer where
+instance Hashable Integer where
+  hashGen = hashInteger
 
 instance Hashable () where
-  hashGen () = salt 0x1
+  hashGen () = salt 0x0
 
 instance Hashable Bool where
-  hashGen False = salt 0x2
-  hashGen True  = salt 0x3
+  hashGen False = salt 0x0
+  hashGen True  = salt 0x1
 
 instance Hashable a => Hashable (Maybe a) where
-  hashGen Nothing  = salt 0x4
-  hashGen (Just x) = salt 0x5 `combine` hashGen x
+  hashGen Nothing  = salt 0x0
+  hashGen (Just x) = hashGen x
 
 instance (Hashable a, Hashable b) => Hashable (Either a b) where
-  hashGen (Left  x) = salt 0x6 `combine` hashGen x
-  hashGen (Right y) = salt 0x7 `combine` hashGen y
+  hashGen (Left  x) = salt 0x0 `combine` hashGen x
+  hashGen (Right y) = salt 0x1 `combine` hashGen y
 
 instance Hashable a => Hashable [a] where
-  hashGen xs = foldr combine (salt 0x8) (map hashGen xs)
+  hashGen xs = foldr combine (salt 0x0) (fmap hashGen xs)
 
 instance (Hashable a, Ix i) => Hashable (Array i a) where
   hashGen = hashGen . elems
 
 instance (Hashable a, Hashable b) => Hashable (a, b) where
-  hashGen (x, y) =
-    salt 0x9   `combine`
-    hashGen x `combine`
-    hashGen y
+  hashGen (x, y) = hashGen x `combine` hashGen y
 
 instance (Hashable a, Hashable b, Hashable c) => Hashable (a, b, c) where
-  hashGen (x, y, z) =
-    salt 0xa  `combine`
-    hashGen x `combine`
-    hashGen y `combine`
-    hashGen z
+  hashGen (x, y, z) = hashGen x `combine` hashGen y `combine` hashGen z
 
 instance (Hashable a, Hashable b, Hashable c, Hashable d)
   => Hashable (a, b, c, d) where
   hashGen (x, y, z, w) =
-    salt 0xb  `combine`
-    hashGen x `combine`
-    hashGen y `combine`
-    hashGen z `combine`
-    hashGen w
+    hashGen x `combine` hashGen y `combine` hashGen z `combine` hashGen w
 
 instance (Hashable a, Integral a) => Hashable (Ratio a) where
-  hashGen x =
-    salt 0xc `combine`
-    hashGen (numerator x) `combine`
-    hashGen (denominator x)
-
---------------------------------------------------------------------------------
+  hashGen x = hashGen (numerator x) `combine` hashGen (denominator x)

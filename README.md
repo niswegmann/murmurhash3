@@ -11,25 +11,6 @@ Assuming you have installed the
 
     $ cabal install murmurhash3
 
-Overview
---------
-
-MurmurHash is a family of non-cryptographic hash functions suitable for
-general hash-based lookup. This implementation uses MurmurHash3 and
-generates 32-bit hash values.
-
-The MurmurHash family of hash functions are described at the following
-webpages:
-
-  * <http://code.google.com/p/smhasher/>
-
-  * <http://en.wikipedia.org/wiki/MurmurHash>
-
-If you need to generate hashes from large pieces of data such as bytestreams
-or if you need a cryptographic hash function this is the wrong package. If
-you need to generate rapid hashes from small pieces of data, e.g. for
-implementing hash-based lookup, this is the right package.
-
 Bugs
 ----
 
