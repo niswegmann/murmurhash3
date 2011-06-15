@@ -5,10 +5,11 @@ Stability       :  provisional
 Portability     :  portable (Haskell 2010)
 
 MurmurHash is a family of non-cryptographic hash functions suitable for
-general hash-based lookup. This implementation uses MurmurHash3 and
-generates 32-bit hash values.
+general hash-based lookup. This implementation uses the MurmurHash3
+algorithm and provides a type-class for computing 32-bit hashes from all
+prevalent data types in the Haskell 2010 Standard.
 
-The MurmurHash family of hash functions are described at the following
+The MurmurHash family of hash functions are described on the following
 webpages:
 
   * <http://code.google.com/p/smhasher/>
@@ -21,7 +22,6 @@ module Data.Digest.Murmur
   , hash
   , Hashable (..)
   , HashGen
-  , runHashGen
   , salt
   , combine
   ) where
@@ -30,19 +30,19 @@ import Data.Array
 import Data.Bits
 import Data.Char
 import Data.Complex
+import Data.List
 import Data.Int
 import Data.Ratio
 import Data.Word
 
 --------------------------------------------------------------------------------
 
--- MurmurHash3 Internals.
-
 -- MurmurHash3 uses a mixer and a finalizer. The mixer maps a block (the data we
 -- want to hash) and a hash state into a new hash state, where both blocks and
 -- hash states are represented by 32-bit words. The finalizer forces all bits
 -- in the hash state to avalanche.
 
+-- Mixes two blocks.
 {-# INLINE mix #-}
 mix :: Word32 -> Word32 -> Word32
 mix b0 h0 =
@@ -65,8 +65,7 @@ mix b0 h0 =
     m1 = 5
     m2 = 0xe6546b64
 
--- Force all bits of a hash block to avalanche:
-
+-- Forces all bits of a hash block to avalanche.
 {-# INLINE finalize #-}
 finalize :: Word32 -> Word32
 finalize h0 =
@@ -91,11 +90,11 @@ finalize h0 =
 
 -- Hash generators.
 
--- | A hash generator is a function from hash states to hash states. The
--- internal representation of hash states is kept transparent.
+-- | A hash generator is a function that maps a hash state into new hash state.
+-- The internal representation of hash states is kept transparent.
 newtype HashGen = HashGen (Word32 -> Word32)
 
--- | Runs a hash generator on a seed.
+-- Runs a hash generator on a seed.
 runHashGen :: HashGen -> Word32 -> Hash
 runHashGen (HashGen f) = finalize . f
 
@@ -105,25 +104,27 @@ runHashGen (HashGen f) = finalize . f
 salt :: Word32 -> HashGen
 salt = HashGen . mix
 
--- | Combines two hash generators so that the output of the first generator is
+-- | Combines two hash generators such that the output of the first generator is
 -- piped into the next. This works similar to function composition.
--- Indeed, forall /f/, /g/, /h/, we have that
+-- Indeed, for all /f/, /g/, /h/, we have that
 --
--- > f `combine` (g `combine` h) == (f `combine` g) `combine h
+-- > f `combine` (g `combine` h) == (f `combine` g) `combine` h
 {-# INLINE combine #-}
 combine :: HashGen -> HashGen -> HashGen
 combine (HashGen f) (HashGen g) = HashGen (g . f)
 
 --------------------------------------------------------------------------------
 
--- | Making custom data types instantiate 'Hashable' is straightforward; suppose
--- we have the following tree data structure:
+-- | Type-class for computing hash generators from values.
+--
+-- Making custom data types instantiate 'Hashable' is straightforward; given
+-- the following tree data structure:
 --
 -- > data Tree a
 -- >   = Tip
 -- >   | Bin a (Tree a) (Tree a)
 --
--- We can make it an instance of 'Hashable' like this:
+-- ...we make it instantiate 'Hashable' like this:
 --
 -- > instance Hashable a => Hashable (Tree a) where
 -- >   hashGen Tip         = salt 0x0
@@ -193,8 +194,8 @@ hashInt =
 {-# INLINE hashInteger #-}
 hashInteger :: Integer -> HashGen
 hashInteger k
-  | k < 0     = foldr combine (salt 0x1) . blocks $ abs k
-  | otherwise = foldr combine (salt 0x0) . blocks $ k
+  | k < 0     = foldl' combine (salt 0x1) . blocks $ abs k
+  | otherwise = foldl' combine (salt 0x0) . blocks $ k
 
   where
 
@@ -257,7 +258,7 @@ instance (Hashable a, Hashable b) => Hashable (Either a b) where
   hashGen (Right y) = salt 0x1 `combine` hashGen y
 
 instance Hashable a => Hashable [a] where
-  hashGen xs = foldr combine (salt 0x0) (fmap hashGen xs)
+  hashGen xs = foldl' combine (salt 0x0) (fmap hashGen xs)
 
 instance (Hashable a, Ix i) => Hashable (Array i a) where
   hashGen = hashGen . elems

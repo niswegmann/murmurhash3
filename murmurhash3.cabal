@@ -15,9 +15,9 @@ cabal-version:       >= 1.10
 description:         
 
   MurmurHash is a family of non-cryptographic hash functions suitable for
-  general hash-based lookup. This implementation uses MurmurHash3 for
-  computing 32-bit hashes of all prevalent data types in the Haskell 2010
-  Standard.
+  general hash-based lookup. This implementation uses the MurmurHash3
+  algorithm and provides a type-class for computing 32-bit hashes from all
+  prevalent data types in the Haskell 2010 Standard.
 
 source-repository head
   type:     git
