@@ -4,13 +4,8 @@ Maintainer      :  niswegmann@gmail.com
 Stability       :  provisional
 Portability     :  portable (Haskell 2010)
 
-MurmurHash is a family of non-cryptographic hash functions suitable for
-general hash-based lookup. This implementation uses the MurmurHash3
-algorithm and provides a type-class for computing 32-bit hashes from all
-prevalent data types in the Haskell 2010 Standard.
 
-The MurmurHash family of hash functions are described on the following
-webpages:
+For details of the implementation of MurmurHash3, see the following webpages:
 
   * <http://code.google.com/p/smhasher/>
 
@@ -30,8 +25,8 @@ import Data.Array
 import Data.Bits
 import Data.Char
 import Data.Complex
-import Data.List
 import Data.Int
+import Data.List
 import Data.Ratio
 import Data.Word
 
@@ -90,7 +85,7 @@ finalize h0 =
 
 -- Hash generators.
 
--- | A hash generator is a function that maps a hash state into new hash state.
+-- | A hash generator is a function that maps a hash state into a new hash state.
 -- The internal representation of hash states is kept transparent.
 newtype HashGen = HashGen (Word32 -> Word32)
 
@@ -98,8 +93,8 @@ newtype HashGen = HashGen (Word32 -> Word32)
 runHashGen :: HashGen -> Word32 -> Hash
 runHashGen (HashGen f) = finalize . f
 
--- | Returns a hash generator which mixes its input with a 32-bit word.
--- Is used for enumerating constructors when deriving 'Hashable'.
+-- | Returns a hash generator that mixes its input with a 32-bit word.
+-- Is typically used for enumerating constructors when deriving 'Hashable'.
 {-# INLINE salt #-}
 salt :: Word32 -> HashGen
 salt = HashGen . mix
@@ -115,7 +110,7 @@ combine (HashGen f) (HashGen g) = HashGen (g . f)
 
 --------------------------------------------------------------------------------
 
--- | Type-class for computing hash generators from values.
+-- | Type class for computing hash generators from values.
 --
 -- Making custom data types instantiate 'Hashable' is straightforward; given
 -- the following tree data structure:
@@ -130,11 +125,11 @@ combine (HashGen f) (HashGen g) = HashGen (g . f)
 -- >   hashGen Tip         = salt 0x0
 -- >   hashGen (Bin x l r) = hashGen x `combine` hashGen l `combine` hashGen r
 --
--- For sum data types such as 'Either' we obviously don't want
+-- For sum data types such as 'Either' we typically want to avoid that
 --
 -- > Left "foo"
 --
--- to have same hash as
+-- hashes to the same hash as
 --
 -- > Right "foo"
 --
@@ -148,7 +143,7 @@ class Hashable a where
   -- | Returns a hash generator for the argument.
   hashGen :: a -> HashGen
 
--- | A 32-bit hash value.
+-- | A 32-bit hash.
 type Hash = Word32
 
 -- | Computes a 32-bit hash from a /hashable/ value.
